@@ -144,20 +144,12 @@ func main() {
 			case webhook.MessageEvent:
 				switch message := e.Message.(type) {
 				case webhook.TextMessageContent:
-
-					chatResp, err := chatMessageComplete(openClient, message.Text)
-					if err != nil {
-						slog.Error("chatMessageComplete failed", slog.Any("err", err))
-
-						continue
-					}
-
 					if _, err = bot.ReplyMessage(
 						&messaging_api.ReplyMessageRequest{
 							ReplyToken: e.ReplyToken,
 							Messages: []messaging_api.MessageInterface{
 								messaging_api.TextMessage{
-									Text: chatResp.Choices[0].Message.Content,
+									Text: "💸💸💸",
 								},
 							},
 						},
@@ -166,7 +158,46 @@ func main() {
 					} else {
 						slog.Debug("Sent text reply.")
 					}
+
+					chatResp, err := chatMessageComplete(openClient, message.Text)
+					if err != nil {
+						slog.Error("chatMessageComplete failed", slog.Any("err", err))
+
+						continue
+					}
+
+					userSource, _ := e.Source.(webhook.UserSource)
+
+					if _, err = bot.PushMessage(
+						&messaging_api.PushMessageRequest{
+							To: userSource.UserId,
+							Messages: []messaging_api.MessageInterface{
+								messaging_api.TextMessage{
+									Text:       chatResp.Choices[0].Message.Content,
+									QuoteToken: message.QuoteToken,
+								},
+							},
+						}, "",
+					); err != nil {
+						slog.Error("failed to reply message", slog.Any("err", err))
+					} else {
+						slog.Debug("Sent text reply.")
+					}
 				case webhook.ImageMessageContent:
+					if _, err = bot.ReplyMessage(
+						&messaging_api.ReplyMessageRequest{
+							ReplyToken: e.ReplyToken,
+							Messages: []messaging_api.MessageInterface{
+								messaging_api.TextMessage{
+									Text: "💸💸💸",
+								},
+							},
+						},
+					); err != nil {
+						slog.Error("failed to reply message", slog.Any("err", err))
+					} else {
+						slog.Debug("Sent text reply.")
+					}
 
 					imageURL, err := getImageMessageURL(blobAPI, message)
 					if err != nil {
@@ -182,15 +213,18 @@ func main() {
 						continue
 					}
 
-					if _, err = bot.ReplyMessage(
-						&messaging_api.ReplyMessageRequest{
-							ReplyToken: e.ReplyToken,
+					userSource, _ := e.Source.(webhook.UserSource)
+
+					if _, err = bot.PushMessage(
+						&messaging_api.PushMessageRequest{
+							To: userSource.UserId,
 							Messages: []messaging_api.MessageInterface{
 								messaging_api.TextMessage{
-									Text: chatResp.Choices[0].Message.Content,
+									Text:       chatResp.Choices[0].Message.Content,
+									QuoteToken: message.QuoteToken,
 								},
 							},
-						},
+						}, "",
 					); err != nil {
 						slog.Error("failed to reply message", slog.Any("err", err))
 					} else {
