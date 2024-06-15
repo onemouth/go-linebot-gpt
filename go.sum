@@ -1,2 +1,4 @@
 github.com/line/line-bot-sdk-go/v8 v8.6.0 h1:tuWf0/gGyEDlciYW8vM/+kmVhlLFkCIdmqbU5bKwL1o=
 github.com/line/line-bot-sdk-go/v8 v8.6.0/go.mod h1:n9Ly8OHM6xCeQktLzRpQHe/yBda95kFgmQUefUQeFCs=
+github.com/sashabaranov/go-openai v1.25.0 h1:3h3DtJ55zQJqc+BR4y/iTcPhLk4pewJpyO+MXW2RdW0=
+github.com/sashabaranov/go-openai v1.25.0/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
