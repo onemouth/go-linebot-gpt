@@ -12,7 +12,8 @@ import (
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
-	openai "github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai"
+	goopenai "github.com/sashabaranov/go-openai"
 )
 
 const (
@@ -32,18 +33,18 @@ func setLogger() {
 	slog.SetDefault(logger)
 }
 
-func chatMessageComplete(client *openai.Client, message string) (openai.ChatCompletionResponse, error) {
+func chatMessageComplete(client *goopenai.Client, message string) (goopenai.ChatCompletionResponse, error) {
 	return client.CreateChatCompletion(
 		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT4Turbo,
-			Messages: []openai.ChatCompletionMessage{
+		goopenai.ChatCompletionRequest{
+			Model: goopenai.GPT4Turbo,
+			Messages: []goopenai.ChatCompletionMessage{
 				{
-					Role:    openai.ChatMessageRoleSystem,
+					Role:    goopenai.ChatMessageRoleSystem,
 					Content: TRANSLATOR_PROMPT,
 				},
 				{
-					Role:    openai.ChatMessageRoleUser,
+					Role:    goopenai.ChatMessageRoleUser,
 					Content: message,
 				},
 			},
@@ -51,22 +52,22 @@ func chatMessageComplete(client *openai.Client, message string) (openai.ChatComp
 	)
 }
 
-func chatImageComplete(client *openai.Client, imageURL string) (openai.ChatCompletionResponse, error) {
+func chatImageComplete(client *goopenai.Client, imageURL string) (goopenai.ChatCompletionResponse, error) {
 	return client.CreateChatCompletion(
 		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT4Turbo,
-			Messages: []openai.ChatCompletionMessage{
+		goopenai.ChatCompletionRequest{
+			Model: goopenai.GPT4Turbo,
+			Messages: []goopenai.ChatCompletionMessage{
 				{
-					Role:    openai.ChatMessageRoleSystem,
+					Role:    goopenai.ChatMessageRoleSystem,
 					Content: TRANSLATOR_PROMPT,
 				},
 				{
-					Role: openai.ChatMessageRoleUser,
-					MultiContent: []openai.ChatMessagePart{
+					Role: goopenai.ChatMessageRoleUser,
+					MultiContent: []goopenai.ChatMessagePart{
 						{
-							Type:     openai.ChatMessagePartTypeImageURL,
-							ImageURL: &openai.ChatMessageImageURL{URL: imageURL},
+							Type:     goopenai.ChatMessagePartTypeImageURL,
+							ImageURL: &goopenai.ChatMessageImageURL{URL: imageURL},
 						},
 					},
 				},
