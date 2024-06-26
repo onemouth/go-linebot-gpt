@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,12 +10,13 @@ import (
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
+	"github.com/onemouth/golinegpt/internal/line"
 	goopenai "github.com/sashabaranov/go-openai"
 )
 
 const (
 	TRANSLATOR_PROMPT = `
-	You are a translator. Let's work out the translation step by step.
+	You are a language teacher. Let's work out the translation step by step.
 	For the input, you will translate it into English(US), Japanese, 繁體中文(Taiwan).
 	And you will output each language's result.
 
@@ -49,7 +49,7 @@ func chatImageComplete(client *goopenai.Client, imageURL string) (goopenai.ChatC
 	return client.CreateChatCompletion(
 		context.Background(),
 		goopenai.ChatCompletionRequest{
-			Model: goopenai.GPT4Turbo,
+			Model: goopenai.GPT4o,
 			Messages: []goopenai.ChatCompletionMessage{
 				{
 					Role:    goopenai.ChatMessageRoleSystem,
@@ -114,14 +114,12 @@ func NewLineWebhookHandler(
 func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	slog.Debug("/callback called...")
 
-	cb, err := webhook.ParseRequest(im.channelSecret, req)
-	if err != nil {
-		slog.Error("Cannot parse request: %+v\n", err)
-		if errors.Is(err, webhook.ErrInvalidSignature) {
-			w.WriteHeader(400)
-		} else {
-			w.WriteHeader(500)
-		}
+	cbOrNil := req.Context().Value(line.CallbackRequestKey{})
+	cb, ok := cbOrNil.(*webhook.CallbackRequest)
+	if !ok {
+		slog.Error("Cannot find cb in context")
+
+		w.WriteHeader(500)
 		return
 	}
 
@@ -133,7 +131,7 @@ func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		case webhook.MessageEvent:
 			switch message := e.Message.(type) {
 			case webhook.TextMessageContent:
-				if _, err = im.bot.ReplyMessage(
+				if _, err := im.bot.ReplyMessage(
 					&messaging_api.ReplyMessageRequest{
 						ReplyToken: e.ReplyToken,
 						Messages: []messaging_api.MessageInterface{
@@ -173,7 +171,7 @@ func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 					slog.Debug("Sent text reply.")
 				}
 			case webhook.ImageMessageContent:
-				if _, err = im.bot.ReplyMessage(
+				if _, err := im.bot.ReplyMessage(
 					&messaging_api.ReplyMessageRequest{
 						ReplyToken: e.ReplyToken,
 						Messages: []messaging_api.MessageInterface{

@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/onemouth/golinegpt/app/bot/http/handler"
+	myhttp "github.com/onemouth/golinegpt/internal/http"
+	"github.com/onemouth/golinegpt/internal/line"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/sashabaranov/go-openai"
@@ -45,7 +47,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("POST /webhook", lineWebhookHandler)
+	lineSigVerifier := line.NewRequestSignatureVerifier(channelSecret)
+
+	mux.Handle("POST /webhook", myhttp.Chain([]myhttp.Middleware{lineSigVerifier}, lineWebhookHandler))
 
 	fs := http.FileServer(http.Dir("./static"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
