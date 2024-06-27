@@ -69,28 +69,30 @@ func chatImageComplete(client *goopenai.Client, imageURL string) (goopenai.ChatC
 	)
 }
 
-func getImageMessageURL(blobAPI *messaging_api.MessagingApiBlobAPI, imageMsg webhook.ImageMessageContent) (string, error) {
+func getImageMessageURL(blobAPI *messaging_api.MessagingApiBlobAPI, imageMsg webhook.ImageMessageContent) (string, string, error) {
 	if imageMsg.ContentProvider.Type == webhook.ContentProviderTYPE_LINE {
 		resp, err := blobAPI.GetMessageContent(imageMsg.Id)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		defer resp.Body.Close()
 
-		newFile, err := os.Create("static/" + imageMsg.Id + ".jpg")
+		localPath := "static/" + imageMsg.Id + ".jpg"
+
+		newFile, err := os.Create(localPath)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		defer newFile.Close()
 		io.Copy(newFile, resp.Body)
 
-		return "https://linebot-dev.ichiban.day" + "/static/" + imageMsg.Id + ".jpg", nil
+		return "https://linebot-dev.ichiban.day/" + localPath, localPath, nil
 
 	} else if imageMsg.ContentProvider.Type == webhook.ContentProviderTYPE_EXTERNAL {
-		return imageMsg.ContentProvider.OriginalContentUrl, nil
+		return imageMsg.ContentProvider.OriginalContentUrl, "", nil
 	}
-	return "", fmt.Errorf("unknown content provider type %s", imageMsg.ContentProvider.Type)
+	return "", "", fmt.Errorf("unknown content provider type %s", imageMsg.ContentProvider.Type)
 }
 
 type LineWebhookHandler struct {
@@ -111,10 +113,10 @@ func NewLineWebhookHandler(
 	}
 }
 
-func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message webhook.TextMessageContent) {
+func (im LineWebhookHandler) replyFlyingMoneyMessage(replyToken string) {
 	if _, err := im.bot.ReplyMessage(
 		&messaging_api.ReplyMessageRequest{
-			ReplyToken: e.ReplyToken,
+			ReplyToken: replyToken,
 			Messages: []messaging_api.MessageInterface{
 				messaging_api.TextMessage{
 					Text: "💸💸💸",
@@ -126,6 +128,10 @@ func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message w
 	} else {
 		slog.Debug("Sent text reply.")
 	}
+}
+
+func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message webhook.TextMessageContent) {
+	im.replyFlyingMoneyMessage(e.ReplyToken)
 
 	chatResp, err := chatMessageComplete(im.openClient, message.Text)
 	if err != nil {
@@ -154,26 +160,17 @@ func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message w
 }
 
 func (im LineWebhookHandler) handleImageMessage(e webhook.MessageEvent, message webhook.ImageMessageContent) {
-	if _, err := im.bot.ReplyMessage(
-		&messaging_api.ReplyMessageRequest{
-			ReplyToken: e.ReplyToken,
-			Messages: []messaging_api.MessageInterface{
-				messaging_api.TextMessage{
-					Text: "💸💸💸",
-				},
-			},
-		},
-	); err != nil {
-		slog.Error("failed to reply message", slog.Any("err", err))
-	} else {
-		slog.Debug("Sent text reply.")
-	}
+	im.replyFlyingMoneyMessage(e.ReplyToken)
 
-	imageURL, err := getImageMessageURL(im.blobAPI, message)
+	imageURL, localPath, err := getImageMessageURL(im.blobAPI, message)
 	if err != nil {
 		slog.Error("getImageMessageURL failed", slog.Any("err", err))
 
 		return
+	}
+
+	if localPath != "" {
+		defer os.Remove(localPath)
 	}
 
 	chatResp, err := chatImageComplete(im.openClient, imageURL)
