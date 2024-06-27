@@ -111,6 +111,108 @@ func NewLineWebhookHandler(
 	}
 }
 
+func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message webhook.TextMessageContent) {
+	if _, err := im.bot.ReplyMessage(
+		&messaging_api.ReplyMessageRequest{
+			ReplyToken: e.ReplyToken,
+			Messages: []messaging_api.MessageInterface{
+				messaging_api.TextMessage{
+					Text: "💸💸💸",
+				},
+			},
+		},
+	); err != nil {
+		slog.Error("failed to reply message", slog.Any("err", err))
+	} else {
+		slog.Debug("Sent text reply.")
+	}
+
+	chatResp, err := chatMessageComplete(im.openClient, message.Text)
+	if err != nil {
+		slog.Error("chatMessageComplete failed", slog.Any("err", err))
+
+		return
+	}
+
+	userSource, _ := e.Source.(webhook.UserSource)
+
+	if _, err = im.bot.PushMessage(
+		&messaging_api.PushMessageRequest{
+			To: userSource.UserId,
+			Messages: []messaging_api.MessageInterface{
+				messaging_api.TextMessage{
+					Text:       chatResp.Choices[0].Message.Content,
+					QuoteToken: message.QuoteToken,
+				},
+			},
+		}, "",
+	); err != nil {
+		slog.Error("failed to reply message", slog.Any("err", err))
+	} else {
+		slog.Debug("Sent text reply.")
+	}
+}
+
+func (im LineWebhookHandler) handleImageMessage(e webhook.MessageEvent, message webhook.ImageMessageContent) {
+	if _, err := im.bot.ReplyMessage(
+		&messaging_api.ReplyMessageRequest{
+			ReplyToken: e.ReplyToken,
+			Messages: []messaging_api.MessageInterface{
+				messaging_api.TextMessage{
+					Text: "💸💸💸",
+				},
+			},
+		},
+	); err != nil {
+		slog.Error("failed to reply message", slog.Any("err", err))
+	} else {
+		slog.Debug("Sent text reply.")
+	}
+
+	imageURL, err := getImageMessageURL(im.blobAPI, message)
+	if err != nil {
+		slog.Error("getImageMessageURL failed", slog.Any("err", err))
+
+		return
+	}
+
+	chatResp, err := chatImageComplete(im.openClient, imageURL)
+	if err != nil {
+		slog.Error("chatImageComplete failed", slog.Any("err", err), slog.String("imageURL", imageURL))
+
+		return
+	}
+
+	userSource, _ := e.Source.(webhook.UserSource)
+
+	if _, err = im.bot.PushMessage(
+		&messaging_api.PushMessageRequest{
+			To: userSource.UserId,
+			Messages: []messaging_api.MessageInterface{
+				messaging_api.TextMessage{
+					Text:       chatResp.Choices[0].Message.Content,
+					QuoteToken: message.QuoteToken,
+				},
+			},
+		}, "",
+	); err != nil {
+		slog.Error("failed to reply message", slog.Any("err", err))
+	} else {
+		slog.Debug("Sent text reply.")
+	}
+}
+
+func (im LineWebhookHandler) handleMessageEvent(e webhook.MessageEvent) {
+	switch message := e.Message.(type) {
+	case webhook.TextMessageContent:
+		im.handleTextMessage(e, message)
+	case webhook.ImageMessageContent:
+		im.handleImageMessage(e, message)
+	default:
+		slog.Warn("Unsupported message content", slog.String("event_type", e.GetType()))
+	}
+}
+
 func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	slog.Debug("/callback called...")
 
@@ -129,98 +231,7 @@ func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 
 		switch e := event.(type) {
 		case webhook.MessageEvent:
-			switch message := e.Message.(type) {
-			case webhook.TextMessageContent:
-				if _, err := im.bot.ReplyMessage(
-					&messaging_api.ReplyMessageRequest{
-						ReplyToken: e.ReplyToken,
-						Messages: []messaging_api.MessageInterface{
-							messaging_api.TextMessage{
-								Text: "💸💸💸",
-							},
-						},
-					},
-				); err != nil {
-					slog.Error("failed to reply message", slog.Any("err", err))
-				} else {
-					slog.Debug("Sent text reply.")
-				}
-
-				chatResp, err := chatMessageComplete(im.openClient, message.Text)
-				if err != nil {
-					slog.Error("chatMessageComplete failed", slog.Any("err", err))
-
-					continue
-				}
-
-				userSource, _ := e.Source.(webhook.UserSource)
-
-				if _, err = im.bot.PushMessage(
-					&messaging_api.PushMessageRequest{
-						To: userSource.UserId,
-						Messages: []messaging_api.MessageInterface{
-							messaging_api.TextMessage{
-								Text:       chatResp.Choices[0].Message.Content,
-								QuoteToken: message.QuoteToken,
-							},
-						},
-					}, "",
-				); err != nil {
-					slog.Error("failed to reply message", slog.Any("err", err))
-				} else {
-					slog.Debug("Sent text reply.")
-				}
-			case webhook.ImageMessageContent:
-				if _, err := im.bot.ReplyMessage(
-					&messaging_api.ReplyMessageRequest{
-						ReplyToken: e.ReplyToken,
-						Messages: []messaging_api.MessageInterface{
-							messaging_api.TextMessage{
-								Text: "💸💸💸",
-							},
-						},
-					},
-				); err != nil {
-					slog.Error("failed to reply message", slog.Any("err", err))
-				} else {
-					slog.Debug("Sent text reply.")
-				}
-
-				imageURL, err := getImageMessageURL(im.blobAPI, message)
-				if err != nil {
-					slog.Error("getImageMessageURL failed", slog.Any("err", err))
-
-					continue
-				}
-
-				chatResp, err := chatImageComplete(im.openClient, imageURL)
-				if err != nil {
-					slog.Error("chatImageComplete failed", slog.Any("err", err), slog.String("imageURL", imageURL))
-
-					continue
-				}
-
-				userSource, _ := e.Source.(webhook.UserSource)
-
-				if _, err = im.bot.PushMessage(
-					&messaging_api.PushMessageRequest{
-						To: userSource.UserId,
-						Messages: []messaging_api.MessageInterface{
-							messaging_api.TextMessage{
-								Text:       chatResp.Choices[0].Message.Content,
-								QuoteToken: message.QuoteToken,
-							},
-						},
-					}, "",
-				); err != nil {
-					slog.Error("failed to reply message", slog.Any("err", err))
-				} else {
-					slog.Debug("Sent text reply.")
-				}
-
-			default:
-				slog.Warn("Unsupported message content", slog.String("event_type", event.GetType()))
-			}
+			im.handleMessageEvent(e)
 		default:
 			slog.Warn("Unsupported message", slog.Any("event", event))
 		}
