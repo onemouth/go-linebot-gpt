@@ -11,7 +11,8 @@ import (
 	"github.com/onemouth/golinegpt/internal/line"
 
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
-	"github.com/sashabaranov/go-openai"
+	openai "github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 )
 
 func setLogger() {
@@ -22,7 +23,7 @@ func setLogger() {
 func main() {
 	setLogger()
 
-	openClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	openaiClient := openai.NewClient(option.WithAPIKey(os.Getenv("OPENAI_API_KEY")))
 
 	channelSecret := os.Getenv("LINE_CHANNEL_SECRET")
 	bot, err := messaging_api.NewMessagingApiAPI(
@@ -42,7 +43,7 @@ func main() {
 	}
 
 	lineWebhookHandler := handler.NewLineWebhookHandler(
-		channelSecret, bot, blobAPI, openClient,
+		channelSecret, bot, blobAPI, openaiClient,
 	)
 
 	mux := http.NewServeMux()

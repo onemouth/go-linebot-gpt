@@ -11,7 +11,7 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
 	"github.com/onemouth/golinegpt/internal/line"
-	goopenai "github.com/sashabaranov/go-openai"
+	openai "github.com/openai/openai-go"
 )
 
 const (
@@ -26,51 +26,28 @@ const (
 	`
 )
 
-func chatMessageComplete(ctx context.Context, client *goopenai.Client, message string) (goopenai.ChatCompletionResponse, error) {
+func chatMessageComplete(ctx context.Context, client *openai.Client, message string) (*openai.ChatCompletion, error) {
 	ctx = context.WithoutCancel(ctx)
 
-	return client.CreateChatCompletion(
-		ctx,
-		goopenai.ChatCompletionRequest{
-			Model: goopenai.GPT4Turbo,
-			Messages: []goopenai.ChatCompletionMessage{
-				{
-					Role:    goopenai.ChatMessageRoleSystem,
-					Content: TRANSLATOR_PROMPT,
-				},
-				{
-					Role:    goopenai.ChatMessageRoleUser,
-					Content: message,
-				},
-			},
-		},
-	)
+	return client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Model: openai.F(openai.ChatModelGPT4o),
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(TRANSLATOR_PROMPT),
+			openai.UserMessage(message),
+		}),
+	})
 }
 
-func chatImageComplete(ctx context.Context, client *goopenai.Client, imageURL string) (goopenai.ChatCompletionResponse, error) {
+func chatImageComplete(ctx context.Context, client *openai.Client, imageURL string) (*openai.ChatCompletion, error) {
 	ctx = context.WithoutCancel(ctx)
 
-	return client.CreateChatCompletion(
-		ctx,
-		goopenai.ChatCompletionRequest{
-			Model: goopenai.GPT4o,
-			Messages: []goopenai.ChatCompletionMessage{
-				{
-					Role:    goopenai.ChatMessageRoleSystem,
-					Content: TRANSLATOR_PROMPT,
-				},
-				{
-					Role: goopenai.ChatMessageRoleUser,
-					MultiContent: []goopenai.ChatMessagePart{
-						{
-							Type:     goopenai.ChatMessagePartTypeImageURL,
-							ImageURL: &goopenai.ChatMessageImageURL{URL: imageURL},
-						},
-					},
-				},
-			},
-		},
-	)
+	return client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Model: openai.F(openai.ChatModelGPT4o),
+		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(TRANSLATOR_PROMPT),
+			openai.UserMessageParts(openai.ImagePart(imageURL)),
+		}),
+	})
 }
 
 func getImageMessageURL(blobAPI *messaging_api.MessagingApiBlobAPI, imageMsg webhook.ImageMessageContent) (string, string, error) {
@@ -103,17 +80,17 @@ type LineWebhookHandler struct {
 	channelSecret string
 	bot           *messaging_api.MessagingApiAPI
 	blobAPI       *messaging_api.MessagingApiBlobAPI
-	openClient    *goopenai.Client
+	openaiClient  *openai.Client
 }
 
 func NewLineWebhookHandler(
-	channelSecret string, bot *messaging_api.MessagingApiAPI, blobAPI *messaging_api.MessagingApiBlobAPI, openClient *goopenai.Client,
+	channelSecret string, bot *messaging_api.MessagingApiAPI, blobAPI *messaging_api.MessagingApiBlobAPI, openaiClient *openai.Client,
 ) LineWebhookHandler {
 	return LineWebhookHandler{
 		channelSecret: channelSecret,
 		bot:           bot,
 		blobAPI:       blobAPI,
-		openClient:    openClient,
+		openaiClient:  openaiClient,
 	}
 }
 
@@ -137,7 +114,7 @@ func (im LineWebhookHandler) replyFlyingMoneyMessage(replyToken string) {
 func (im LineWebhookHandler) handleTextMessage(ctx context.Context, e webhook.MessageEvent, message webhook.TextMessageContent) {
 	im.replyFlyingMoneyMessage(e.ReplyToken)
 
-	chatResp, err := chatMessageComplete(ctx, im.openClient, message.Text)
+	chatResp, err := chatMessageComplete(ctx, im.openaiClient, message.Text)
 	if err != nil {
 		slog.Error("chatMessageComplete failed", slog.Any("err", err))
 
@@ -177,7 +154,7 @@ func (im LineWebhookHandler) handleImageMessage(ctx context.Context, e webhook.M
 		defer os.Remove(localPath)
 	}
 
-	chatResp, err := chatImageComplete(ctx, im.openClient, imageURL)
+	chatResp, err := chatImageComplete(ctx, im.openaiClient, imageURL)
 	if err != nil {
 		slog.Error("chatImageComplete failed", slog.Any("err", err), slog.String("imageURL", imageURL))
 
