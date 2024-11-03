@@ -26,9 +26,11 @@ const (
 	`
 )
 
-func chatMessageComplete(client *goopenai.Client, message string) (goopenai.ChatCompletionResponse, error) {
+func chatMessageComplete(ctx context.Context, client *goopenai.Client, message string) (goopenai.ChatCompletionResponse, error) {
+	ctx = context.WithoutCancel(ctx)
+
 	return client.CreateChatCompletion(
-		context.Background(),
+		ctx,
 		goopenai.ChatCompletionRequest{
 			Model: goopenai.GPT4Turbo,
 			Messages: []goopenai.ChatCompletionMessage{
@@ -45,9 +47,11 @@ func chatMessageComplete(client *goopenai.Client, message string) (goopenai.Chat
 	)
 }
 
-func chatImageComplete(client *goopenai.Client, imageURL string) (goopenai.ChatCompletionResponse, error) {
+func chatImageComplete(ctx context.Context, client *goopenai.Client, imageURL string) (goopenai.ChatCompletionResponse, error) {
+	ctx = context.WithoutCancel(ctx)
+
 	return client.CreateChatCompletion(
-		context.Background(),
+		ctx,
 		goopenai.ChatCompletionRequest{
 			Model: goopenai.GPT4o,
 			Messages: []goopenai.ChatCompletionMessage{
@@ -130,10 +134,10 @@ func (im LineWebhookHandler) replyFlyingMoneyMessage(replyToken string) {
 	}
 }
 
-func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message webhook.TextMessageContent) {
+func (im LineWebhookHandler) handleTextMessage(ctx context.Context, e webhook.MessageEvent, message webhook.TextMessageContent) {
 	im.replyFlyingMoneyMessage(e.ReplyToken)
 
-	chatResp, err := chatMessageComplete(im.openClient, message.Text)
+	chatResp, err := chatMessageComplete(ctx, im.openClient, message.Text)
 	if err != nil {
 		slog.Error("chatMessageComplete failed", slog.Any("err", err))
 
@@ -159,7 +163,7 @@ func (im LineWebhookHandler) handleTextMessage(e webhook.MessageEvent, message w
 	}
 }
 
-func (im LineWebhookHandler) handleImageMessage(e webhook.MessageEvent, message webhook.ImageMessageContent) {
+func (im LineWebhookHandler) handleImageMessage(ctx context.Context, e webhook.MessageEvent, message webhook.ImageMessageContent) {
 	im.replyFlyingMoneyMessage(e.ReplyToken)
 
 	imageURL, localPath, err := getImageMessageURL(im.blobAPI, message)
@@ -173,7 +177,7 @@ func (im LineWebhookHandler) handleImageMessage(e webhook.MessageEvent, message 
 		defer os.Remove(localPath)
 	}
 
-	chatResp, err := chatImageComplete(im.openClient, imageURL)
+	chatResp, err := chatImageComplete(ctx, im.openClient, imageURL)
 	if err != nil {
 		slog.Error("chatImageComplete failed", slog.Any("err", err), slog.String("imageURL", imageURL))
 
@@ -199,12 +203,12 @@ func (im LineWebhookHandler) handleImageMessage(e webhook.MessageEvent, message 
 	}
 }
 
-func (im LineWebhookHandler) handleMessageEvent(e webhook.MessageEvent) {
+func (im LineWebhookHandler) handleMessageEvent(ctx context.Context, e webhook.MessageEvent) {
 	switch message := e.Message.(type) {
 	case webhook.TextMessageContent:
-		im.handleTextMessage(e, message)
+		im.handleTextMessage(ctx, e, message)
 	case webhook.ImageMessageContent:
-		im.handleImageMessage(e, message)
+		im.handleImageMessage(ctx, e, message)
 	default:
 		slog.Warn("Unsupported message content", slog.String("event_type", e.GetType()))
 	}
@@ -213,7 +217,9 @@ func (im LineWebhookHandler) handleMessageEvent(e webhook.MessageEvent) {
 func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	slog.Debug("/callback called...")
 
-	cbOrNil := req.Context().Value(line.CallbackRequestKey{})
+	ctx := req.Context()
+
+	cbOrNil := ctx.Value(line.CallbackRequestKey{})
 	cb, ok := cbOrNil.(*webhook.CallbackRequest)
 	if !ok {
 		slog.Error("Cannot find cb in context")
@@ -228,7 +234,7 @@ func (im LineWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 
 		switch e := event.(type) {
 		case webhook.MessageEvent:
-			im.handleMessageEvent(e)
+			im.handleMessageEvent(ctx, e)
 		default:
 			slog.Warn("Unsupported message", slog.Any("event", event))
 		}
