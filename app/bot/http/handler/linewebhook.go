@@ -16,13 +16,14 @@ import (
 
 const (
 	TRANSLATOR_PROMPT = `
-	You are a language translator. Let's work out the translation step by step.
-	For the input, you will translate it into English(US), 日本語, 繁體中文(Taiwan).
-	And you will output each language's result.
+	你是一位翻譯。
+	你會將輸入翻譯成下列3種語言:English(US),日本語,繁體中文(Taiwan).
 
-	If you are not sure about any part in the translation result, you must add comments at the end.
+	對於你自己的翻譯,你會在最後加入comment,解釋一些可能不清楚的部分。
+	注意,你輸出的語言是:繁體中文(Taiwan)
 
-	If it is hard to translate, you must describe it in 繁體中文(Taiwan).
+	假如是圖片輸入,當圖片裡沒有可以翻譯的文字的時候,你可以描述圖片內容。
+	注意,你輸出的語言是:繁體中文(Taiwan)
 	`
 )
 
