@@ -16,13 +16,13 @@ import (
 
 const (
 	TRANSLATOR_PROMPT = `
-	You are a language teacher. Let's work out the translation step by step.
-	For the input, you will translate it into English(US), Japanese, 繁體中文(Taiwan).
+	You are a language translator. Let's work out the translation step by step.
+	For the input, you will translate it into English(US), 日本語, 繁體中文(Taiwan).
 	And you will output each language's result.
 
-	If you are not sure about something in the translation result, you must add comments at the end.
+	If you are not sure about any part in the translation result, you must add comments at the end.
 
-	If it is hard to translate, you can just describe it.
+	If it is hard to translate, you must describe it in 繁體中文(Taiwan).
 	`
 )
 

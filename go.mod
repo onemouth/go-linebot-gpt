@@ -4,7 +4,7 @@ go 1.22.4
 
 require github.com/line/line-bot-sdk-go/v8 v8.6.0
 
-require github.com/openai/openai-go v0.1.0-alpha.32
+require github.com/openai/openai-go v0.1.0-alpha.50
 
 require (
 	github.com/tidwall/gjson v1.18.0 // indirect
